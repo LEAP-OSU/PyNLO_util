@@ -7,14 +7,15 @@ import matplotlib.pyplot as plt
 import pynlo
 from scipy.signal import hilbert
 from matplotlib.colors import LogNorm
+import json
 
 # Input Pulse Parameters
 ########################
 FWHM_DURATION = 0.07    # (ps)
 CENTER_WL = 3100        # (nm)
 PULSE_ENERGY = 3e-06    # (J)
-GDD = 0.0               # (ps^2)
-TOD = 0.0               # (ps^3)
+GDD = 0.0              # (ps^2)
+TOD = 1e-4         # (ps^3)
 # PEAK_POWER = 0.94 * PULSE_ENERGY / (FWHM_DURATION * 1e-12)  # (J/s)
 
 # Grid Parameters
@@ -76,6 +77,7 @@ for idx, gamma_val in enumerate(GAMMA):
 # PLOTS
 #######
 # Plot spectrum evolution and final spectral content for each simulation
+pynlo_spectrums = {}
 for idx, res in enumerate(results):
     # Extract data for current gamma
     gamma_val = res['gamma']
@@ -86,46 +88,61 @@ for idx, res in enumerate(results):
     
     # Get frequency and convert to wavelength
     F = input_pulse.W_mks / (2 * np.pi) * 1e-12  # Frequency in THz
+    tolerance = 0.1
+    indices_80 = np.where(np.abs(F - 80) < tolerance)[0]
+    indices_120 = np.where(np.abs(F - 120) < tolerance)[0]
+
+    if idx == 0:
+        freq = F[indices_80[0]:indices_120[-1]]
+        pynlo_spectrums["freq"] = freq.tolist()
     
     # Process data
-    zW = pyutil.dB(np.transpose(AW)[:, (F > 0)])
-    zT = pyutil.dB(np.transpose(AT))
+    zW = np.abs(np.transpose(AW)[:, (F > 0)])
+    zT = np.abs(np.transpose(AT))
+    zW_temp = np.abs(np.transpose(AW))
+    label = "" + str(idx) + " mm"
+    pynlo_spectrums[label] = zW_temp[-1][indices_80[0]:indices_120[-1]].tolist()
 
-    # Create Figure
-    fig = plt.figure(figsize=(10,10))
-    ax0 = plt.subplot2grid((3,2), (0, 0), rowspan=1)
-    ax1 = plt.subplot2grid((3,2), (0, 1), rowspan=1)
-    ax2 = plt.subplot2grid((3,2), (1, 0), rowspan=2, sharex=ax0)
-    ax3 = plt.subplot2grid((3,2), (1, 1), rowspan=2, sharex=ax1)
+    if idx == 0:
+        pynlo_spectrums["seed"] = zW_temp[0][indices_80[0]:indices_120[-1]].tolist()
     
-    ax0.plot(F[F > 0], zW[-1]/np.max(zW[-1]), color='r')
-    ax1.plot(input_pulse.T_ps, zT[-1], color='r')
+    # Create Figure
+    # fig = plt.figure(figsize=(10,10))
+    # ax0 = plt.subplot2grid((3,2), (0, 0), rowspan=1)
+    # ax1 = plt.subplot2grid((3,2), (0, 1), rowspan=1)
+    # ax2 = plt.subplot2grid((3,2), (1, 0), rowspan=2, sharex=ax0)
+    # ax3 = plt.subplot2grid((3,2), (1, 1), rowspan=2, sharex=ax1)
+    
+    # ax0.plot(F[F > 0], zW[-1]/np.max(zW[-1]), color='r')
+    # ax1.plot(input_pulse.T_ps, zT[-1], color='r')
 
-    ax0.plot(F[F > 0],   zW[0]/np.max(zW[0]), color='b')
-    ax1.plot(input_pulse.T_ps, zT[0], color='b')
+    # ax0.plot(F[F > 0],   zW[0]/np.max(zW[0]), color='b')
+    # ax1.plot(input_pulse.T_ps, zT[0], color='b')
 
-    extent = (np.min(F[F > 0]), np.max(F[F > 0]), 0, FIBER_LENGTH * 1e3)
-    ax2.imshow(zW, extent=extent, vmin=np.max(zW) - 60.0,
-                 vmax=np.max(zW), aspect='auto', origin='lower')
+    # extent = (np.min(F[F > 0]), np.max(F[F > 0]), 0, FIBER_LENGTH * 1e3)
+    # ax2.imshow(zW, extent=extent, vmin=np.max(zW) - 60.0,
+    #              vmax=np.max(zW), aspect='auto', origin='lower')
 
-    extent = (np.min(input_pulse.T_ps), np.max(input_pulse.T_ps), np.min(y), FIBER_LENGTH * 1e3)
-    ax3.imshow(zT, extent=extent, vmin=np.max(zT) - 60.0,
-           vmax=np.max(zT), aspect='auto', origin='lower')
+    # extent = (np.min(input_pulse.T_ps), np.max(input_pulse.T_ps), np.min(y), FIBER_LENGTH * 1e3)
+    # ax3.imshow(zT, extent=extent, vmin=np.max(zT) - 60.0,
+    #        vmax=np.max(zT), aspect='auto', origin='lower')
 
-    ax0.set_ylabel('Intensity (dB)')
+    # ax0.set_ylabel('Intensity (dB)')
 
-    ax2.set_xlabel('Frequency (THz)')
-    ax3.set_xlabel('Time (ps)')
+    # ax2.set_xlabel('Frequency (THz)')
+    # ax3.set_xlabel('Time (ps)')
 
-    ax2.set_ylabel('Propagation distance (mm)')
+    # ax2.set_ylabel('Propagation distance (mm)')
 
-    ax2.set_xlim(0,400)
+    # ax2.set_xlim(0,400)
 
-    ax0.set_ylim(-80,0)
-    ax1.set_ylim(-40,40)
+    # ax0.set_ylim(-80,0)
+    # ax1.set_ylim(-40,40)
 
-    plt.show()
+    # plt.show()
 
+with open("pynlo_spectrums.json", "w") as json_file:
+    json.dump(pynlo_spectrums, json_file, indent=4)
 
 # Plot the power curve for each pulse including the input pulse
 input_power = np.abs(input_pulse.AT)**2
@@ -170,4 +187,11 @@ plt.tick_params(axis='both', labelsize=12)
 plt.grid(True, alpha=0.3)
 plt.legend(fontsize=12)
 plt.tight_layout()
-plt.show()
+# plt.show()
+
+pynlo_pulse_durations = {
+    "pulse durations": pulse_durations, 
+    "x axis": distances
+}
+with open("pynlo_pulse_durations.json", "w") as json_file:
+    json.dump(pynlo_pulse_durations, json_file, indent=4)

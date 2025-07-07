@@ -74,11 +74,12 @@ for idx, gamma_val in enumerate(GAMMA):
     })
 
 
-# PLOTS
-#######
-# Plot spectrum evolution and final spectral content for each simulation
-pynlo_spectrums = {}
+# PLOTS + DATA EXPORT
+#####################
+pynlo_spectrums = {} # will store this in a json
+
 for idx, res in enumerate(results):
+
     # Extract data for current gamma
     gamma_val = res['gamma']
     y = res['y']
@@ -86,23 +87,30 @@ for idx, res in enumerate(results):
     AT = res['AT']
     pulse_out = res['pulse_out']
     
-    # Get frequency and convert to wavelength
-    F = input_pulse.W_mks / (2 * np.pi) * 1e-12  # Frequency in THz
+
+    # Get frequency axis (THz)
+    F = input_pulse.W_mks / (2 * np.pi) * 1e-12
+
+
+    # Get Frequency axis from 80 - 120 THz (region of interest)
     tolerance = 0.1
     indices_80 = np.where(np.abs(F - 80) < tolerance)[0]
     indices_120 = np.where(np.abs(F - 120) < tolerance)[0]
 
+    # store a copy of relevant freq axis
     if idx == 0:
         freq = F[indices_80[0]:indices_120[-1]]
         pynlo_spectrums["freq"] = freq.tolist()
     
-    # Process data
-    zW = np.abs(np.transpose(AW)[:, (F > 0)])
-    zT = np.abs(np.transpose(AT))
+    zW = np.abs(np.transpose(AW)[:, (F > 0)]) # absolute intensity of E, freq domain
+    zT = np.abs(np.transpose(AT)) # absolute intensity of E, time domain
+
+    # store a copy of the output pulses spectrum over the relevant frequencies
     zW_temp = np.abs(np.transpose(AW))
     label = "" + str(idx) + " mm"
     pynlo_spectrums[label] = zW_temp[-1][indices_80[0]:indices_120[-1]].tolist()
 
+    # store a copy of the input pulse spectrum
     if idx == 0:
         pynlo_spectrums["seed"] = zW_temp[0][indices_80[0]:indices_120[-1]].tolist()
     
@@ -141,14 +149,14 @@ for idx, res in enumerate(results):
 
     # plt.show()
 
-with open("pynlo_spectrums.json", "w") as json_file:
+# Store spectrum data into .json
+with open("pynlo_spectrums_3uj_YAG.json", "w") as json_file:
     json.dump(pynlo_spectrums, json_file, indent=4)
 
-# Plot the power curve for each pulse including the input pulse
+# Plot the power curve for each pulse and store pulse durations
 input_power = np.abs(input_pulse.AT)**2
 time_ps = input_pulse.T_ps
 input_pulse_duration = pyutil.fwhm(time_ps, input_power)
-print("input pulse duration: " + str(input_pulse_duration) + " (ps)")
 
 plt.figure(figsize=(10,5))
 plt.plot(time_ps, input_power, color='black', label='Input Pulse')
@@ -170,7 +178,7 @@ plt.tick_params(axis='both', labelsize=12)
 plt.grid(True, alpha=0.3)
 plt.legend(fontsize=14)
 plt.tight_layout()
-plt.show()
+# plt.show()
 
 # Plot the pulse duration as a function of distance from the focus
 distances = [0.0, 0.5, 1.0, 1.5, 2.0, 2.5, 3.0]
@@ -189,9 +197,11 @@ plt.legend(fontsize=12)
 plt.tight_layout()
 # plt.show()
 
-pynlo_pulse_durations = {
-    "pulse durations": pulse_durations, 
-    "x axis": distances
-}
-with open("pynlo_pulse_durations.json", "w") as json_file:
-    json.dump(pynlo_pulse_durations, json_file, indent=4)
+
+# Save pulse durations in .json
+# pynlo_pulse_durations = {
+#     "pulse durations": pulse_durations, 
+#     "x axis": distances
+# }
+# with open("pynlo_pulse_durations.json", "w") as json_file:
+#     json.dump(pynlo_pulse_durations, json_file, indent=4)

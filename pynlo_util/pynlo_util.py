@@ -11,7 +11,7 @@ def n_YAG(wl):
     returns:
         n: n computes at wl based on the Sellmeier equation (unitless)
     """
-    # From Zelmon et al.
+    # From Zelmon et al. see refractiveindex.com
     B1, C1 = 2.282, 0.01185
     B2, C2 = 3.27644, 282.734
 
@@ -19,6 +19,27 @@ def n_YAG(wl):
     n = np.sqrt(1
                 + B1*wl2/(wl2 - C1)
                 + B2*wl2/(wl2 - C2)
+                )
+    return n
+
+def n_Si(wl):
+    """
+    Returns the Sellmeier equation for Si
+    Args:
+        wl: The wavelength to compute n at (um)
+    returns:
+        n: n computes at wl based on the Sellmeier equation (unitless)
+    """
+    # From Salzberg and Villa see refractiveindex.com
+    B1, C1 = 10.6684293, 0.301516485
+    B2, C2 = 0.0030434748, 1.13475115
+    B3, C3 = 1.54133408, 1104
+
+    wl2 = wl**2
+    n = np.sqrt(1
+                + B1*wl2/(wl2 - C1**2)
+                + B2*wl2/(wl2 - C2**2)
+                + B3*wl2/(wl2 - C3**2)
                 )
     return n
 
@@ -169,3 +190,36 @@ def freq_to_wl(freq_THz):
     """Convert frequency in THz to wavelength in um"""
     c = 299792458  # Speed of light in m/s
     return c / (freq_THz * 1e12) * 1e6  # Convert to m
+
+def eff_nonlin(n2, wl, radius):
+    """
+    Returns the effective nonlinearity in (1/Wm) given the central wl, nonlinear refractive index,
+    and fiber/beam radius.
+
+    Args:
+        n2: nonlinear refractive index (m^2/W)
+        wl: central wavelength (m)
+        radius: effective radius (m)
+    return:
+        gamma: Effective nonlinearity (1/Wm)
+    """
+    gamma = (2 * np.pi * n2) / (wl * np.pi * radius**2)
+    return gamma
+
+def calc_radius(pulse_energy, pulse_duration, peak_intensity):
+    """
+    Returns the beam radius when given the pule energy, duration, and peak intensity
+
+    Args:
+        pulse_energy: pulse energy (J)
+        pulse_duration: pulse duration (s)
+        peak_intesnity: peak pulse intensity (W/m^2)
+    Returns:
+        radius: calculated beam radius (m)   
+    """
+    radius = np.sqrt(
+        (1.88 * pulse_energy) / (np.pi * peak_intensity * pulse_duration)
+    )
+    return radius
+
+

@@ -43,6 +43,27 @@ def n_Si(wl):
                 )
     return n
 
+def n_CaF2(wl):
+    """
+    Returns the Sellmeier equation for Si
+    Args:
+        wl: The wavelength to compute n at (um)
+    returns:
+        n: n computes at wl based on the Sellmeier equation (unitless)
+    """
+    # From Lisee refractiveindex.com
+    B1, C1 = 0.69913, 0.09374
+    B2, C2 = 0.11994, 21.18
+    B3, C3 = 4.35181, 38.46
+
+    wl2 = wl**2
+    n = np.sqrt(1 + 0.33973
+                + B1*wl2/(wl2 - C1**2)
+                + B2*wl2/(wl2 - C2**2)
+                + B3*wl2/(wl2 - C3**2)
+                )
+    return n
+
 def wl_to_omega(wl):
     """Convert wavelength (m) to angular frequency (rad/s)"""
     return 2 * np.pi * c / wl
